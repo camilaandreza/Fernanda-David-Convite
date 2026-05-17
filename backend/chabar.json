@@ -1,0 +1,72 @@
+{
+  "gifts": [
+    {
+      "id": 1,
+      "name": "Jogo de Panelas",
+      "category": "cozinha",
+      "description": "8 peças antiaderente, fundo triplo",
+      "img_url": "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&q=80",
+      "buy_link": "https://www.amazon.com.br",
+      "total_qty": 1,
+      "bought_qty": 0,
+      "created_at": "17/05/2026, 00:15:41"
+    },
+    {
+      "id": 2,
+      "name": "Jogo de Cama King",
+      "category": "quarto",
+      "description": "4 peças, 100% algodão egípcio, 400 fios",
+      "img_url": "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400&q=80",
+      "buy_link": "https://www.tokstok.com.br",
+      "total_qty": 1,
+      "bought_qty": 0,
+      "created_at": "17/05/2026, 00:15:41"
+    },
+    {
+      "id": 3,
+      "name": "Aspirador de Pó Robô",
+      "category": "sala",
+      "description": "Mapeamento laser, autonomia 90min",
+      "img_url": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80",
+      "buy_link": "https://www.magazineluiza.com.br",
+      "total_qty": 1,
+      "bought_qty": 0,
+      "created_at": "17/05/2026, 00:15:41"
+    },
+    {
+      "id": 4,
+      "name": "Kit Toalhas de Banho",
+      "category": "banheiro",
+      "description": "6 toalhas premium, 600g/m², 100% algodão",
+      "img_url": "https://images.unsplash.com/photo-1600369671236-e74521d4b6ad?w=400&q=80",
+      "buy_link": "https://www.casasbahia.com.br",
+      "total_qty": 2,
+      "bought_qty": 0,
+      "created_at": "17/05/2026, 00:15:41"
+    },
+    {
+      "id": 5,
+      "name": "Fritadeira Air Fryer",
+      "category": "cozinha",
+      "description": "12L, digital, 10 funções, inox",
+      "img_url": "https://images.unsplash.com/photo-1648215263248-4c9c4fcf3cfe?w=400&q=80",
+      "buy_link": "https://www.americanas.com.br",
+      "total_qty": 1,
+      "bought_qty": 0,
+      "created_at": "17/05/2026, 00:15:41"
+    },
+    {
+      "id": 6,
+      "name": "Conjunto de Talheres",
+      "category": "cozinha",
+      "description": "24 peças inox polido, com estojo",
+      "img_url": "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&q=80",
+      "buy_link": "https://www.tokstok.com.br",
+      "total_qty": 1,
+      "bought_qty": 0,
+      "created_at": "17/05/2026, 00:15:41"
+    }
+  ],
+  "logs": [],
+  "nextId": 10
+}
