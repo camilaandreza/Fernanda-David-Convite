@@ -2,6 +2,7 @@ const express = require('express');
 const cors    = require('cors');
 const path    = require('path');
 const fs      = require('fs');
+const multer  = require('multer');
 
 const app  = express();
 const PORT = process.env.PORT || 8080;
@@ -10,7 +11,37 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../frontend')));
 
-// ── BANCO DE DADOS (JSON file — sem dependências nativas) ──
+// ── UPLOAD DE IMAGENS ─────────────────────────────────────
+const UPLOADS_DIR = path.join(__dirname, 'uploads');
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, UPLOADS_DIR),
+  filename:    (req, file, cb) => {
+    const ext  = path.extname(file.originalname);
+    const name = Date.now() + '-' + Math.round(Math.random() * 1e6) + ext;
+    cb(null, name);
+  }
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) cb(null, true);
+    else cb(new Error('Apenas imagens são permitidas'));
+  }
+});
+
+app.use('/uploads', express.static(UPLOADS_DIR));
+
+// POST /api/upload
+app.post('/api/upload', upload.single('image'), (req, res) => {
+  if (!req.file) return res.status(400).json({ ok: false, error: 'Nenhuma imagem enviada' });
+  const url = `/uploads/${req.file.filename}`;
+  res.json({ ok: true, url });
+});
+
+// ── BANCO DE DADOS ────────────────────────────────────────
 const DB_PATH = path.join(__dirname, 'chabar.json');
 
 function readDB() {
@@ -36,17 +67,20 @@ function addLog(db, giftId, giftName, action) {
 if (!fs.existsSync(DB_PATH)) {
   const db = readDB();
   db.gifts = [
-    { id: 1, name: 'Jogo de Panelas', category: 'cozinha', description: '8 peças antiaderente, fundo triplo', img_url: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&q=80', buy_link: 'https://www.amazon.com.br', total_qty: 1, bought_qty: 0, created_at: timestamp() },
-    { id: 2, name: 'Jogo de Cama King', category: 'quarto', description: '4 peças, 100% algodão egípcio, 400 fios', img_url: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400&q=80', buy_link: 'https://www.tokstok.com.br', total_qty: 1, bought_qty: 0, created_at: timestamp() },
-    { id: 3, name: 'Aspirador de Pó Robô', category: 'sala', description: 'Mapeamento laser, autonomia 90min', img_url: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80', buy_link: 'https://www.magazineluiza.com.br', total_qty: 1, bought_qty: 0, created_at: timestamp() },
-    { id: 4, name: 'Kit Toalhas de Banho', category: 'banheiro', description: '6 toalhas premium, 600g/m², 100% algodão', img_url: 'https://images.unsplash.com/photo-1600369671236-e74521d4b6ad?w=400&q=80', buy_link: 'https://www.casasbahia.com.br', total_qty: 2, bought_qty: 0, created_at: timestamp() },
-    { id: 5, name: 'Fritadeira Air Fryer', category: 'cozinha', description: '12L, digital, 10 funções, inox', img_url: 'https://images.unsplash.com/photo-1648215263248-4c9c4fcf3cfe?w=400&q=80', buy_link: 'https://www.americanas.com.br', total_qty: 1, bought_qty: 0, created_at: timestamp() },
-    { id: 6, name: 'Conjunto de Talheres', category: 'cozinha', description: '24 peças inox polido, com estojo', img_url: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&q=80', buy_link: 'https://www.tokstok.com.br', total_qty: 1, bought_qty: 0, created_at: timestamp() },
+    { id: 1, name: 'Jogo de Panelas', category: 'cozinha', description: '8 peças antiaderente, fundo triplo', img_url: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&q=80', price: 350, total_qty: 1, bought_qty: 0, created_at: timestamp() },
+    { id: 2, name: 'Jogo de Cama King', category: 'quarto', description: '4 peças, 100% algodão egípcio, 400 fios', img_url: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400&q=80', price: 280, total_qty: 1, bought_qty: 0, created_at: timestamp() },
+    { id: 3, name: 'Aspirador de Pó Robô', category: 'sala', description: 'Mapeamento laser, autonomia 90min', img_url: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80', price: 900, total_qty: 1, bought_qty: 0, created_at: timestamp() },
+    { id: 4, name: 'Kit Toalhas de Banho', category: 'banheiro', description: '6 toalhas premium, 600g/m²', img_url: 'https://images.unsplash.com/photo-1600369671236-e74521d4b6ad?w=400&q=80', price: 180, total_qty: 2, bought_qty: 0, created_at: timestamp() },
+    { id: 5, name: 'Fritadeira Air Fryer', category: 'cozinha', description: '12L, digital, 10 funções, inox', img_url: 'https://images.unsplash.com/photo-1648215263248-4c9c4fcf3cfe?w=400&q=80', price: 420, total_qty: 1, bought_qty: 0, created_at: timestamp() },
+    { id: 6, name: 'Conjunto de Talheres', category: 'cozinha', description: '24 peças inox polido, com estojo', img_url: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&q=80', price: 150, total_qty: 1, bought_qty: 0, created_at: timestamp() },
   ];
   db.nextId = 10;
   writeDB(db);
   console.log('✅ Banco criado com itens padrão');
 }
+
+// ── ROTAS ─────────────────────────────────────────────────
+
 // POST /api/login
 app.post('/api/login', (req, res) => {
   const { password } = req.body;
@@ -56,7 +90,6 @@ app.post('/api/login', (req, res) => {
     res.status(401).json({ ok: false, error: 'Senha incorreta' });
   }
 });
-// ── ROTAS ─────────────────────────────────────────────────
 
 // GET /api/gifts
 app.get('/api/gifts', (req, res) => {
@@ -66,7 +99,7 @@ app.get('/api/gifts', (req, res) => {
 
 // POST /api/gifts
 app.post('/api/gifts', (req, res) => {
-  const { name, category, description, img_url, buy_link, total_qty } = req.body;
+  const { name, category, description, img_url, price, total_qty } = req.body;
   if (!name) return res.status(400).json({ ok: false, error: 'Nome obrigatório' });
   const db = readDB();
   const gift = {
@@ -75,7 +108,7 @@ app.post('/api/gifts', (req, res) => {
     category: category || 'outros',
     description: description || '',
     img_url: img_url || '',
-    buy_link: buy_link || '',
+    price: parseFloat(price) || 0,
     total_qty: parseInt(total_qty) || 1,
     bought_qty: 0,
     created_at: timestamp(),
@@ -92,9 +125,9 @@ app.put('/api/gifts/:id', (req, res) => {
   const db = readDB();
   const idx = db.gifts.findIndex(g => g.id === id);
   if (idx === -1) return res.status(404).json({ ok: false, error: 'Não encontrado' });
-  const { name, category, description, img_url, buy_link, total_qty } = req.body;
+  const { name, category, description, img_url, price, total_qty } = req.body;
   if (!name) return res.status(400).json({ ok: false, error: 'Nome obrigatório' });
-  db.gifts[idx] = { ...db.gifts[idx], name, category, description, img_url, buy_link, total_qty: parseInt(total_qty) || 1 };
+  db.gifts[idx] = { ...db.gifts[idx], name, category, description, img_url, price: parseFloat(price) || 0, total_qty: parseInt(total_qty) || 1 };
   addLog(db, id, name, 'editado');
   writeDB(db);
   res.json({ ok: true, data: db.gifts[idx] });
@@ -132,6 +165,11 @@ app.delete('/api/gifts/:id', (req, res) => {
   const db = readDB();
   const gift = db.gifts.find(g => g.id === id);
   if (!gift) return res.status(404).json({ ok: false, error: 'Não encontrado' });
+  // remove imagem se for upload local
+  if (gift.img_url && gift.img_url.startsWith('/uploads/')) {
+    const imgPath = path.join(UPLOADS_DIR, path.basename(gift.img_url));
+    if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+  }
   db.gifts = db.gifts.filter(g => g.id !== id);
   addLog(db, id, gift.name, 'removido');
   writeDB(db);
@@ -144,12 +182,12 @@ app.get('/api/logs', (req, res) => {
   res.json({ ok: true, data: db.logs.slice(0, 50) });
 });
 
-// Fallback → index.html
+// Fallback
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
 app.listen(PORT, () => {
   console.log(`🌿 Servidor rodando em http://localhost:${PORT}`);
-  console.log(`📦 Banco de dados: ${DB_PATH}`);
+  console.log(`📦 Banco: ${DB_PATH}`);
 });
