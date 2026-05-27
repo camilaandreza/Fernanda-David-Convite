@@ -47,7 +47,7 @@ if (!fs.existsSync(DB_PATH)) {
   writeDB(db);
   console.log('✅ Banco criado com itens padrão');
 }
-/ POST /api/login
+// POST /api/login
 app.post('/api/login', (req, res) => {
   const { password } = req.body;
   if (password === 'fernanda2025') {
