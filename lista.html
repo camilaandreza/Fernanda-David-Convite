@@ -255,7 +255,6 @@
 // CONFIG
 // ─────────────────────────────────────────────────────────
 const API      = 'https://fernanda-david-convite.onrender.com'; 
-const ADMIN_PW = 'fernanda2025';
 const POLL_MS  = 8000; // sincroniza a cada 8s automaticamente
 
 // ─────────────────────────────────────────────────────────
@@ -521,21 +520,32 @@ document.getElementById('adminToggle').addEventListener('change', function() {
 document.getElementById('adminPwdBtn').addEventListener('click', checkPwd);
 document.getElementById('adminPwdInput').addEventListener('keydown', e => { if (e.key === 'Enter') checkPwd(); });
 
-function checkPwd() {
-  if (document.getElementById('adminPwdInput').value === ADMIN_PW) {
-    adminMode = true;
-    document.body.classList.add('admin-mode');
-    document.getElementById('adminPwdInput').value = '';
-    document.getElementById('adminPwdWrap').classList.remove('visible');
-    const hint = document.getElementById('adminHint');
-    hint.textContent = '✓ Modo noivos ativo';
-    hint.style.display = '';
-    hint.style.color = 'var(--desert-rock)';
-    render();
-    showToast('Bem-vindos, Fernanda & David! 💍');
-  } else {
-    showToast('Senha incorreta');
-    document.getElementById('adminPwdInput').value = '';
+async function checkPwd() {
+  const val = document.getElementById('adminPwdInput').value;
+  try {
+    const res = await fetch(API + '/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: val })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      adminMode = true;
+      document.body.classList.add('admin-mode');
+      document.getElementById('adminPwdInput').value = '';
+      document.getElementById('adminPwdWrap').classList.remove('visible');
+      const hint = document.getElementById('adminHint');
+      hint.textContent = '✓ Modo noivos ativo';
+      hint.style.display = '';
+      hint.style.color = 'var(--desert-rock)';
+      render();
+      showToast('Bem-vindos, Fernanda & David! 💍');
+    } else {
+      showToast('Senha incorreta');
+      document.getElementById('adminPwdInput').value = '';
+    }
+  } catch(e) {
+    showToast('Erro de conexão');
   }
 }
 

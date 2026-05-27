@@ -47,7 +47,15 @@ if (!fs.existsSync(DB_PATH)) {
   writeDB(db);
   console.log('✅ Banco criado com itens padrão');
 }
-
+/ POST /api/login
+app.post('/api/login', (req, res) => {
+  const { password } = req.body;
+  if (password === 'fernanda2025') {
+    res.json({ ok: true });
+  } else {
+    res.status(401).json({ ok: false, error: 'Senha incorreta' });
+  }
+});
 // ── ROTAS ─────────────────────────────────────────────────
 
 // GET /api/gifts
