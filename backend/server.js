@@ -1,82 +1,47 @@
-const express = require('express');
-const cors    = require('cors');
-const path    = require('path');
-const fs      = require('fs');
-const multer  = require('multer');
+const express   = require('express');
+const cors      = require('cors');
+const path      = require('path');
+const { MongoClient, ObjectId } = require('mongodb');
 
 const app  = express();
 const PORT = process.env.PORT || 8080;
 
+// ── CONEXÃO MONGODB ───────────────────────────────────────
+const MONGO_URI = process.env.MONGO_URI;
+if (!MONGO_URI) {
+  console.error('❌ Variável MONGO_URI não definida!');
+  process.exit(1);
+}
+
+let db;
+const client = new MongoClient(MONGO_URI);
+
+async function connectDB() {
+  await client.connect();
+  db = client.db('chabar'); // nome do banco no Atlas
+  console.log('✅ Conectado ao MongoDB Atlas');
+
+  // Seed: só insere se a coleção estiver vazia
+  const count = await db.collection('gifts').countDocuments();
+  if (count === 0) {
+    const now = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    await db.collection('gifts').insertMany([
+      { name: 'Jogo de Panelas',       category: 'cozinha',   description: '8 peças antiaderente, fundo triplo',          img_url: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&q=80', price: 350, total_qty: 1, bought_qty: 0, created_at: now },
+      { name: 'Jogo de Cama King',     category: 'quarto',    description: '4 peças, 100% algodão egípcio, 400 fios',      img_url: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400&q=80', price: 280, total_qty: 1, bought_qty: 0, created_at: now },
+      { name: 'Aspirador de Pó Robô',  category: 'sala',      description: 'Mapeamento laser, autonomia 90min',             img_url: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80', price: 900, total_qty: 1, bought_qty: 0, created_at: now },
+      { name: 'Kit Toalhas de Banho',  category: 'banheiro',  description: '6 toalhas premium, 600g/m²',                   img_url: 'https://images.unsplash.com/photo-1600369671236-e74521d4b6ad?w=400&q=80', price: 180, total_qty: 2, bought_qty: 0, created_at: now },
+      { name: 'Fritadeira Air Fryer',  category: 'cozinha',   description: '12L, digital, 10 funções, inox',               img_url: 'https://images.unsplash.com/photo-1648215263248-4c9c4fcf3cfe?w=400&q=80', price: 420, total_qty: 1, bought_qty: 0, created_at: now },
+      { name: 'Conjunto de Talheres',  category: 'cozinha',   description: '24 peças inox polido, com estojo',             img_url: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&q=80', price: 150, total_qty: 1, bought_qty: 0, created_at: now },
+    ]);
+    console.log('🌱 Seed inserido com itens padrão');
+  }
+}
+
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../frontend')));
-
-// ── UPLOAD DE IMAGENS ─────────────────────────────────────
-const UPLOADS_DIR = path.join(__dirname, 'uploads');
-if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, UPLOADS_DIR),
-  filename:    (req, file, cb) => {
-    const ext  = path.extname(file.originalname);
-    const name = Date.now() + '-' + Math.round(Math.random() * 1e6) + ext;
-    cb(null, name);
-  }
-});
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) cb(null, true);
-    else cb(new Error('Apenas imagens são permitidas'));
-  }
-});
-
-app.use('/uploads', express.static(UPLOADS_DIR));
-
-// POST /api/upload
-app.post('/api/upload', upload.single('image'), (req, res) => {
-  if (!req.file) return res.status(400).json({ ok: false, error: 'Nenhuma imagem enviada' });
-  const url = `/uploads/${req.file.filename}`;
-  res.json({ ok: true, url });
-});
-
-// ── BANCO DE DADOS ────────────────────────────────────────
-const DB_PATH = path.join(__dirname, 'chabar.json');
-
-function readDB() {
-  if (!fs.existsSync(DB_PATH)) return { gifts: [], logs: [], nextId: 1 };
-  try { return JSON.parse(fs.readFileSync(DB_PATH, 'utf8')); }
-  catch { return { gifts: [], logs: [], nextId: 1 }; }
-}
-
-function writeDB(data) {
-  fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), 'utf8');
-}
 
 function timestamp() {
   return new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-}
-
-function addLog(db, giftId, giftName, action) {
-  db.logs.unshift({ id: Date.now(), gift_id: giftId, gift_name: giftName, action, created_at: timestamp() });
-  if (db.logs.length > 100) db.logs = db.logs.slice(0, 100);
-}
-
-// Seed inicial
-if (!fs.existsSync(DB_PATH)) {
-  const db = readDB();
-  db.gifts = [
-    { id: 1, name: 'Jogo de Panelas', category: 'cozinha', description: '8 peças antiaderente, fundo triplo', img_url: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&q=80', price: 350, total_qty: 1, bought_qty: 0, created_at: timestamp() },
-    { id: 2, name: 'Jogo de Cama King', category: 'quarto', description: '4 peças, 100% algodão egípcio, 400 fios', img_url: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400&q=80', price: 280, total_qty: 1, bought_qty: 0, created_at: timestamp() },
-    { id: 3, name: 'Aspirador de Pó Robô', category: 'sala', description: 'Mapeamento laser, autonomia 90min', img_url: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80', price: 900, total_qty: 1, bought_qty: 0, created_at: timestamp() },
-    { id: 4, name: 'Kit Toalhas de Banho', category: 'banheiro', description: '6 toalhas premium, 600g/m²', img_url: 'https://images.unsplash.com/photo-1600369671236-e74521d4b6ad?w=400&q=80', price: 180, total_qty: 2, bought_qty: 0, created_at: timestamp() },
-    { id: 5, name: 'Fritadeira Air Fryer', category: 'cozinha', description: '12L, digital, 10 funções, inox', img_url: 'https://images.unsplash.com/photo-1648215263248-4c9c4fcf3cfe?w=400&q=80', price: 420, total_qty: 1, bought_qty: 0, created_at: timestamp() },
-    { id: 6, name: 'Conjunto de Talheres', category: 'cozinha', description: '24 peças inox polido, com estojo', img_url: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&q=80', price: 150, total_qty: 1, bought_qty: 0, created_at: timestamp() },
-  ];
-  db.nextId = 10;
-  writeDB(db);
-  console.log('✅ Banco criado com itens padrão');
 }
 
 // ── ROTAS ─────────────────────────────────────────────────
@@ -92,102 +57,118 @@ app.post('/api/login', (req, res) => {
 });
 
 // GET /api/gifts
-app.get('/api/gifts', (req, res) => {
-  const db = readDB();
-  res.json({ ok: true, data: db.gifts });
+app.get('/api/gifts', async (req, res) => {
+  try {
+    const gifts = await db.collection('gifts').find().sort({ _id: 1 }).toArray();
+    // Converte _id do Mongo para id numérico esperado pelo frontend
+    const data = gifts.map(g => ({ ...g, id: g._id.toString(), _id: undefined }));
+    res.json({ ok: true, data });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // POST /api/gifts
-app.post('/api/gifts', (req, res) => {
-  const { name, category, description, img_url, price, total_qty } = req.body;
-  if (!name) return res.status(400).json({ ok: false, error: 'Nome obrigatório' });
-  const db = readDB();
-  const gift = {
-    id: db.nextId++,
-    name: name.trim(),
-    category: category || 'outros',
-    description: description || '',
-    img_url: img_url || '',
-    price: parseFloat(price) || 0,
-    total_qty: parseInt(total_qty) || 1,
-    bought_qty: 0,
-    created_at: timestamp(),
-  };
-  db.gifts.push(gift);
-  addLog(db, gift.id, gift.name, 'criado');
-  writeDB(db);
-  res.status(201).json({ ok: true, data: gift });
+app.post('/api/gifts', async (req, res) => {
+  try {
+    const { name, category, description, img_url, price, total_qty } = req.body;
+    if (!name) return res.status(400).json({ ok: false, error: 'Nome obrigatório' });
+    const gift = {
+      name: name.trim(),
+      category: category || 'outros',
+      description: description || '',
+      img_url: img_url || '',
+      price: parseFloat(price) || 0,
+      total_qty: parseInt(total_qty) || 1,
+      bought_qty: 0,
+      created_at: timestamp(),
+    };
+    const result = await db.collection('gifts').insertOne(gift);
+    await db.collection('logs').insertOne({ gift_id: result.insertedId.toString(), gift_name: gift.name, action: 'criado', created_at: timestamp() });
+    res.status(201).json({ ok: true, data: { ...gift, id: result.insertedId.toString() } });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // PUT /api/gifts/:id
-app.put('/api/gifts/:id', (req, res) => {
-  const id = parseInt(req.params.id);
-  const db = readDB();
-  const idx = db.gifts.findIndex(g => g.id === id);
-  if (idx === -1) return res.status(404).json({ ok: false, error: 'Não encontrado' });
-  const { name, category, description, img_url, price, total_qty } = req.body;
-  if (!name) return res.status(400).json({ ok: false, error: 'Nome obrigatório' });
-  db.gifts[idx] = { ...db.gifts[idx], name, category, description, img_url, price: parseFloat(price) || 0, total_qty: parseInt(total_qty) || 1 };
-  addLog(db, id, name, 'editado');
-  writeDB(db);
-  res.json({ ok: true, data: db.gifts[idx] });
+app.put('/api/gifts/:id', async (req, res) => {
+  try {
+    const _id = new ObjectId(req.params.id);
+    const { name, category, description, img_url, price, total_qty } = req.body;
+    if (!name) return res.status(400).json({ ok: false, error: 'Nome obrigatório' });
+    const update = { name, category, description, img_url, price: parseFloat(price) || 0, total_qty: parseInt(total_qty) || 1 };
+    const result = await db.collection('gifts').findOneAndUpdate({ _id }, { $set: update }, { returnDocument: 'after' });
+    if (!result) return res.status(404).json({ ok: false, error: 'Não encontrado' });
+    await db.collection('logs').insertOne({ gift_id: req.params.id, gift_name: name, action: 'editado', created_at: timestamp() });
+    res.json({ ok: true, data: { ...result, id: result._id.toString(), _id: undefined } });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // PATCH /api/gifts/:id/mark
-app.patch('/api/gifts/:id/mark', (req, res) => {
-  const id = parseInt(req.params.id);
-  const db = readDB();
-  const gift = db.gifts.find(g => g.id === id);
-  if (!gift) return res.status(404).json({ ok: false, error: 'Não encontrado' });
-  if (gift.bought_qty >= gift.total_qty)
-    return res.status(409).json({ ok: false, error: 'Já completamente reservado' });
-  gift.bought_qty++;
-  addLog(db, id, gift.name, 'marcado como presenteado');
-  writeDB(db);
-  res.json({ ok: true, data: gift });
+app.patch('/api/gifts/:id/mark', async (req, res) => {
+  try {
+    const _id = new ObjectId(req.params.id);
+    const gift = await db.collection('gifts').findOne({ _id });
+    if (!gift) return res.status(404).json({ ok: false, error: 'Não encontrado' });
+    if (gift.bought_qty >= gift.total_qty)
+      return res.status(409).json({ ok: false, error: 'Já completamente reservado' });
+    const updated = await db.collection('gifts').findOneAndUpdate({ _id }, { $inc: { bought_qty: 1 } }, { returnDocument: 'after' });
+    await db.collection('logs').insertOne({ gift_id: req.params.id, gift_name: gift.name, action: 'marcado como presenteado', created_at: timestamp() });
+    res.json({ ok: true, data: { ...updated, id: updated._id.toString(), _id: undefined } });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // PATCH /api/gifts/:id/unmark
-app.patch('/api/gifts/:id/unmark', (req, res) => {
-  const id = parseInt(req.params.id);
-  const db = readDB();
-  const gift = db.gifts.find(g => g.id === id);
-  if (!gift) return res.status(404).json({ ok: false, error: 'Não encontrado' });
-  gift.bought_qty = Math.max(0, gift.bought_qty - 1);
-  addLog(db, id, gift.name, 'marcação desfeita');
-  writeDB(db);
-  res.json({ ok: true, data: gift });
+app.patch('/api/gifts/:id/unmark', async (req, res) => {
+  try {
+    const _id = new ObjectId(req.params.id);
+    const gift = await db.collection('gifts').findOne({ _id });
+    if (!gift) return res.status(404).json({ ok: false, error: 'Não encontrado' });
+    const newQty = Math.max(0, gift.bought_qty - 1);
+    const updated = await db.collection('gifts').findOneAndUpdate({ _id }, { $set: { bought_qty: newQty } }, { returnDocument: 'after' });
+    await db.collection('logs').insertOne({ gift_id: req.params.id, gift_name: gift.name, action: 'marcação desfeita', created_at: timestamp() });
+    res.json({ ok: true, data: { ...updated, id: updated._id.toString(), _id: undefined } });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // DELETE /api/gifts/:id
-app.delete('/api/gifts/:id', (req, res) => {
-  const id = parseInt(req.params.id);
-  const db = readDB();
-  const gift = db.gifts.find(g => g.id === id);
-  if (!gift) return res.status(404).json({ ok: false, error: 'Não encontrado' });
-  // remove imagem se for upload local
-  if (gift.img_url && gift.img_url.startsWith('/uploads/')) {
-    const imgPath = path.join(UPLOADS_DIR, path.basename(gift.img_url));
-    if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+app.delete('/api/gifts/:id', async (req, res) => {
+  try {
+    const _id = new ObjectId(req.params.id);
+    const gift = await db.collection('gifts').findOne({ _id });
+    if (!gift) return res.status(404).json({ ok: false, error: 'Não encontrado' });
+    await db.collection('gifts').deleteOne({ _id });
+    await db.collection('logs').insertOne({ gift_id: req.params.id, gift_name: gift.name, action: 'removido', created_at: timestamp() });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
   }
-  db.gifts = db.gifts.filter(g => g.id !== id);
-  addLog(db, id, gift.name, 'removido');
-  writeDB(db);
-  res.json({ ok: true });
 });
 
 // GET /api/logs
-app.get('/api/logs', (req, res) => {
-  const db = readDB();
-  res.json({ ok: true, data: db.logs.slice(0, 50) });
+app.get('/api/logs', async (req, res) => {
+  try {
+    const logs = await db.collection('logs').find().sort({ _id: -1 }).limit(50).toArray();
+    const data = logs.map(l => ({ ...l, id: l._id.toString(), _id: undefined }));
+    res.json({ ok: true, data });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
-// Fallback
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/index.html'));
-});
-
-app.listen(PORT, () => {
-  console.log(`🌿 Servidor rodando em http://localhost:${PORT}`);
-  console.log(`📦 Banco: ${DB_PATH}`);
+// ── INICIALIZA ────────────────────────────────────────────
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`🌿 Servidor rodando na porta ${PORT}`);
+  });
+}).catch(err => {
+  console.error('❌ Erro ao conectar ao MongoDB:', err);
+  process.exit(1);
 });
