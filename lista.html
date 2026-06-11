@@ -227,7 +227,7 @@ function render(silent=false){
     grid.innerHTML=visible.length===0?'<p class="empty-msg">Nenhum presente nesta categoria ainda 🌿</p>':visible.map(cardHTML).join('');
   }else{
     const ids=new Set(visible.map(g=>g.id));
-    grid.querySelectorAll('.card').forEach(el=>{if(!ids.has(Number(el.dataset.id)))el.remove();});
+    grid.querySelectorAll('.card').forEach(el=>{if(!ids.has(el.dataset.id))el.remove();});
     visible.forEach(gift=>{
       const existing=grid.querySelector(`[data-id="${gift.id}"]`);
       const tmp=document.createElement('div');tmp.innerHTML=cardHTML(gift);
@@ -256,10 +256,10 @@ function cardHTML(g){
     </div>
     <div class="card-footer">
       ${adminMode
-        ?`<button class="btn-mark ${isBought?'undo':''}" onclick="adminMark(${g.id},${isBought})">${isBought?'Desfazer':'Marcar presenteado'}</button>`
-        :(!isBought?`<button class="btn-presentear" onclick="openPixModal(${g.id})">💛 Vou presentear!</button>`:'')}
+        ?`<button class="btn-mark ${isBought?'undo':''}" onclick="adminMark('${g.id}',${isBought})">${isBought?'Desfazer':'Marcar presenteado'}</button>`
+        :(!isBought?`<button class="btn-presentear" onclick="openPixModal('${g.id}')">💛 Vou presentear!</button>`:'')}
     </div>
-    <button class="btn-remove" onclick="removeGift(${g.id},'${g.name}')">Remover</button>
+    <button class="btn-remove" onclick="removeGift('${g.id}','${g.name}')">Remover</button>
   </div>`;
 }
 function updateStats(){
