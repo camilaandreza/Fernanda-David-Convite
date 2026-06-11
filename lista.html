@@ -154,12 +154,9 @@
     </div>
     <div class="form-row full">
       <div class="form-group">
-        <label>Foto do produto</label>
-        <div class="img-upload-wrap" onclick="document.getElementById('newImgFile').click()">
-          <input type="file" id="newImgFile" accept="image/*" onchange="previewImg(this)">
-          <p class="img-upload-label">Clique para <span>escolher uma imagem</span> (máx 5MB)</p>
-          <img class="img-preview" id="imgPreview" src="" alt="preview">
-        </div>
+        <label>URL da foto do produto</label>
+        <input type="url" id="newImgUrl" placeholder="https://..." style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:.9rem;" oninput="var p=document.getElementById('imgPreview');if(this.value){p.src=this.value;p.style.display='block';}else{p.style.display='none';}">
+        <img id="imgPreview" src="" alt="preview" style="display:none;margin-top:8px;max-width:100%;border-radius:6px;max-height:180px;object-fit:cover;">
       </div>
     </div>
     <button class="btn-add" id="btnAdd" onclick="addItem()">Adicionar à lista</button>
@@ -314,14 +311,7 @@ async function addItem(){
   if(!name){showToast('Digite o nome do presente');return;}
   const btn=document.getElementById('btnAdd');btn.disabled=true;btn.textContent='Adicionando…';
   try{
-    let img_url='';
-    const fileInput=document.getElementById('newImgFile');
-    if(fileInput.files&&fileInput.files[0]){
-      btn.textContent='Enviando imagem…';
-      const formData=new FormData();formData.append('image',fileInput.files[0]);
-      const upRes=await fetch(API+'/api/upload',{method:'POST',body:formData});
-      const upData=await upRes.json();if(upData.ok)img_url=upData.url;
-    }
+    const img_url=document.getElementById('newImgUrl').value.trim();
     await apiFetch('/api/gifts',{method:'POST',body:JSON.stringify({
       name,category:document.getElementById('newCategory').value,
       description:document.getElementById('newDesc').value.trim(),
@@ -330,9 +320,8 @@ async function addItem(){
     })});
     ['newName','newDesc','newPrice'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('newQty').value='1';
-    document.getElementById('newImgFile').value='';
+    document.getElementById('newImgUrl').value='';
     document.getElementById('imgPreview').style.display='none';
-    document.querySelector('.img-upload-label').innerHTML='Clique para <span>escolher uma imagem</span> (máx 5MB)';
     await loadGifts(true);showToast('Presente adicionado! 🎁');
   }catch(e){showToast('Ops: '+e.message);}
   finally{btn.disabled=false;btn.textContent='Adicionar à lista';}
